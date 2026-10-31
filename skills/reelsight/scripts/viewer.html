@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ReelSight</title>
+<style>
+:root{--bg:#0b0b0d;--panel:#141418;--line:#26262d;--text:#ececf1;--mute:#8b8b98;--accent:#ffd60a;--ok:#34d399;--bad:#f87171;--cut:#7dd3fc}
+@media (prefers-color-scheme:light){:root{--bg:#f6f6f3;--panel:#fff;--line:#e4e4df;--text:#18181b;--mute:#6b6b75;--accent:#c79a00;--ok:#059669;--bad:#dc2626;--cut:#0284c7}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.logo{font-weight:800;letter-spacing:-.02em;font-size:18px}.logo b{color:var(--accent)}
+.src{color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-size:12px}
+.pill{padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.pill.run{color:var(--accent)}.pill.done{color:var(--ok);border-color:var(--ok)}.pill.err{color:var(--bad);border-color:var(--bad)}
+main{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:20px;padding:20px;max-width:1400px;margin:auto}
+@media (max-width:820px){main{grid-template-columns:1fr;padding:16px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+h3{margin:0 0 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.stage{position:relative}
+.phone{aspect-ratio:9/16;background:#000;border-radius:22px;overflow:hidden;display:grid;place-items:center;border:1px solid var(--line)}
+.phone.wide{aspect-ratio:16/9}
+video{width:100%;height:100%;object-fit:contain;display:none}
+.scan{color:#888;font-size:13px;text-align:center;padding:20px}
+.scan i{display:block;width:44px;height:44px;margin:0 auto 12px;border:3px solid #333;border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+canvas{width:100%;height:64px;display:block;margin-top:12px;cursor:pointer;border-radius:8px}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--mute);margin-top:6px;flex-wrap:wrap}
+.legend span:before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;background:var(--c)}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:8px}
+.st{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;border:1px solid var(--line);opacity:.5;transition:.3s}
+.st.active,.st.done{opacity:1}.st.active{border-color:var(--accent)}
+.st .ic{width:16px;height:16px;flex:none;border-radius:50%;border:2px solid var(--line);margin-top:2px}
+.st.active .ic{border-color:var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+.st.done .ic{background:var(--ok);border-color:var(--ok)}
+.st.error .ic{background:var(--bad);border-color:var(--bad)}
+.st b{display:block;font-size:12.5px}.st small{color:var(--mute);font-size:11.5px}
+.meta{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.meta .who{font-weight:700;font-size:16px}.meta .stat{color:var(--mute);font-size:12.5px}
+.cap{margin-top:8px;color:var(--mute);white-space:pre-wrap;max-height:84px;overflow:auto;font-size:13px}
+.frames{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.fr{position:relative;border-radius:10px;overflow:hidden;cursor:pointer;border:2px solid transparent;animation:pop .45s cubic-bezier(.2,1.4,.4,1);background:#000}
+.fr.on{border-color:var(--accent)}
+.fr img{width:100%;display:block;aspect-ratio:9/16;object-fit:cover}
+.wide .fr img{aspect-ratio:16/9}
+.fr span{position:absolute;left:6px;top:6px;background:#000c;color:#ffd60a;font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px}
+.fr em{position:absolute;left:6px;bottom:6px;background:#000c;color:#ddd;font-size:10px;font-style:normal;padding:2px 6px;border-radius:6px}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.tx{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:2px}
+.ln{display:flex;gap:10px;padding:5px 8px;border-radius:8px;cursor:pointer;animation:fade .4s}
+.ln:hover{background:var(--line)}.ln.on{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.ln time{color:var(--accent);font-variant-numeric:tabular-nums;font-size:12px;flex:none;padding-top:1px}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}}
+.empty{color:var(--mute);font-size:13px}
+.hand{display:none;grid-column:1/-1}
+.hand.show{display:block;animation:fade .6s}
+.hand .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.hand .top b{color:var(--ok);font-size:15px}.hand .top small{color:var(--mute);flex:1}
+button{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit;font-size:12px}
+pre{margin:0;white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--mute);max-height:280px;overflow:auto}
+.err{color:var(--bad)}
+</style>
+</head>
+<body>
+<header><div class="logo">reel<b>sight</b></div><div class="src" id="src"></div><div class="pill run" id="pill">watching…</div></header>
+<main id="main">
+  <section class="col">
+    <div class="card">
+      <div class="phone" id="phone"><div class="scan" id="scan"><i></i>Fetching the video…</div><video id="vid" controls playsinline muted loop></video></div>
+      <canvas id="tl" height="128"></canvas>
+      <div class="legend"><span style="--c:var(--mute)">loudness</span><span style="--c:var(--cut)">cut</span><span style="--c:var(--accent)">key frame</span><span style="--c:var(--bad)">audio hit</span></div>
+    </div>
+  </section>
+  <section class="col">
+    <div class="card"><div class="stages" id="stages"></div></div>
+    <div class="card" id="metaCard" style="display:none"><div class="meta" id="meta"></div><div class="cap" id="cap"></div></div>
+    <div class="card"><h3>Key moments</h3><div class="frames" id="frames"><div class="empty">Frames appear here as they're captured.</div></div></div>
+    <div class="card"><h3>Transcript <small id="tsrc" style="text-transform:none;letter-spacing:0"></small></h3><div class="tx" id="tx"><div class="empty">Listening…</div></div></div>
+  </section>
+  <section class="card hand" id="hand">
+    <div class="top"><b>✓ Handed to Claude</b><small id="tok"></small><button id="copy">Copy digest</button></div>
+    <pre id="digest"></pre>
+  </section>
+</main>
+<script>
+const id = location.pathname.split("/")[2], base = `/${id}/`;
+const $ = s => document.getElementById(s), vid = $("vid"), cv = $("tl"), cx = cv.getContext("2d");
+let S = null, nFrames = 0, nLines = 0, t0 = Date.now();
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const num = n => n == null ? null : n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : n;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const seek = t => { if (!vid.src) return; vid.currentTime = t; vid.play().catch(() => {}); };
+
+async function poll() {
+  try {
+    const r = await fetch(base + "state.json", {cache: "no-store"});
+    if (r.ok) render(await r.json());
+  } catch (e) {}
+  if (!S || S.status === "running") setTimeout(poll, 600);
+}
+
+function render(s) {
+  S = s;
+  $("src").textContent = s.source;
+  const pill = $("pill");
+  pill.className = "pill " + (s.status === "done" ? "done" : s.status === "error" ? "err" : "run");
+  pill.textContent = s.status === "done" ? `watched in ${Math.round((s.finished - s.started))}s` : s.status === "error" ? "failed" : `watching… ${Math.round((Date.now() - t0) / 1000)}s`;
+  $("stages").innerHTML = s.stages.map(st => `<div class="st ${st.status}"><div class="ic"></div><div><b>${esc(st.label)}</b><small>${esc(st.detail)}</small></div></div>`).join("");
+  if (s.width && s.height && s.width > s.height) { $("phone").classList.add("wide"); $("main").classList.add("wide"); }
+  if (s.video && !vid.src) {
+    vid.src = base + s.video; vid.style.display = "block"; $("scan").style.display = "none";
+    vid.play().catch(() => {});
+  }
+  const m = s.meta || {};
+  if (m.uploader || m.handle || m.title) {
+    $("metaCard").style.display = "";
+    const stats = [m.date && `${m.date.slice(0, 4)}-${m.date.slice(4, 6)}-${m.date.slice(6)}`, num(m.views) != null && `${num(m.views)} views`, num(m.likes) != null && `${num(m.likes)} likes`, num(m.comments) != null && `${num(m.comments)} comments`, s.duration && fmt(s.duration)].filter(Boolean);
+    $("meta").innerHTML = `<span class="who">${esc(m.handle ? "@" + m.handle : m.uploader || m.title)}</span><span class="stat">${esc(m.platform)} · ${stats.map(esc).join(" · ")}</span>`;
+    $("cap").textContent = m.caption || "";
+  }
+  if (s.frames.length !== nFrames) {
+    const box = $("frames");
+    if (s.frames.length < nFrames) nFrames = 0;  // near-duplicates were dropped
+    if (!nFrames) box.innerHTML = "";
+    s.frames.slice(nFrames).forEach((f, i) => {
+      const d = document.createElement("div");
+      d.className = "fr"; d.dataset.t = f.t;
+      d.innerHTML = `<img src="${base + f.file}?${s.frames.length}" alt=""><span>#${nFrames + i + 1} ${f.t.toFixed(1)}s</span><em>${esc(f.why)}</em>`;
+      d.onclick = () => seek(f.t);
+      box.appendChild(d);
+    });
+    nFrames = s.frames.length;
+  }
+  if (s.transcript.length !== nLines) {
+    const box = $("tx");
+    if (!nLines) box.innerHTML = "";
+    s.transcript.slice(nLines).forEach(l => {
+      const d = document.createElement("div");
+      d.className = "ln"; d.dataset.s = l.s; d.dataset.e = l.e;
+      d.innerHTML = `<time>${fmt(l.s)}</time><span>${esc(l.text)}</span>`;
+      d.onclick = () => seek(l.s);
+      box.appendChild(d);
+    });
+    nLines = s.transcript.length;
+    box.scrollTop = box.scrollHeight;
+  }
+  $("tsrc").textContent = s.transcript_source ? "· " + s.transcript_source : "";
+  if (s.status === "done") {
+    if (!nLines) $("tx").innerHTML = `<div class="empty">No speech — ${esc(s.stages[4].detail)}</div>`;
+    $("digest").textContent = s.digest;
+    $("tok").textContent = s.stages[5].detail + " — Claude continues in your chat.";
+    $("hand").classList.add("show");
+  }
+  if (s.status === "error") {
+    $("scan").innerHTML = `<div class="err">${esc(s.error)}</div>`;
+    $("scan").style.display = "block";
+  }
+}
+
+function draw() {
+  const W = cv.width = cv.clientWidth * 2, H = cv.height, css = getComputedStyle(document.documentElement);
+  const col = k => css.getPropertyValue(k).trim();
+  cx.clearRect(0, 0, W, H);
+  if (S && S.duration) {
+    const D = S.duration, L = S.loudness || [], x = t => t / D * W;
+    cx.fillStyle = col("--line"); cx.fillRect(0, 0, W, H);
+    cx.fillStyle = col("--mute");
+    const bw = W / Math.max(L.length, 1);
+    L.forEach((v, i) => { const h = Math.max(2, v * (H - 24)); cx.fillRect(i * bw, H - 6 - h, Math.max(1, bw - 1), h); });
+    cx.fillStyle = col("--cut"); (S.scenes || []).forEach(t => cx.fillRect(x(t) - 1, 0, 2, H));
+    cx.fillStyle = col("--bad"); (S.hits || []).forEach(t => { cx.beginPath(); cx.arc(x(t), 10, 5, 0, 7); cx.fill(); });
+    cx.fillStyle = col("--accent"); cx.font = "bold 18px system-ui";
+    S.frames.forEach((f, i) => { cx.fillRect(x(f.t) - 2, H - 16, 4, 16); });
+    if (vid.src) { cx.fillStyle = col("--text"); cx.fillRect(x(vid.currentTime) - 1.5, 0, 3, H); }
+    const now = vid.currentTime;
+    document.querySelectorAll(".ln").forEach(el => el.classList.toggle("on", now >= +el.dataset.s && now < +el.dataset.e));
+    let on = null; document.querySelectorAll(".fr").forEach(el => { if (+el.dataset.t <= now + .05) on = el; el.classList.remove("on"); });
+    if (on && !vid.paused) on.classList.add("on");
+  }
+  requestAnimationFrame(draw);
+}
+cv.onclick = e => { if (S && S.duration) seek(e.offsetX / cv.clientWidth * S.duration); };
+$("copy").onclick = () => navigator.clipboard.writeText(S.digest).then(() => $("copy").textContent = "Copied ✓");
+poll(); draw();
+</script>
+</body>
+</html>

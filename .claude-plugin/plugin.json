@@ -1,0 +1,10 @@
+{
+  "name": "reelsight",
+  "version": "1.0.0",
+  "description": "Give Claude eyes and ears for short-form video: send an Instagram Reel, TikTok or YouTube Short and Claude watches it, with transcript, key-moment frames and a live viewer.",
+  "author": { "name": "Gaviru Attanayake", "url": "https://github.com/gaviruatt" },
+  "homepage": "https://github.com/gaviruatt/reelsight",
+  "repository": "https://github.com/gaviruatt/reelsight",
+  "license": "MIT",
+  "keywords": ["instagram", "reels", "tiktok", "youtube-shorts", "video", "transcription", "whisper", "skill"]
+}

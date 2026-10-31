@@ -1,0 +1,16 @@
+{
+  "name": "reelsight",
+  "description": "ReelSight: Claude watches short-form video (Reels, TikTok, Shorts) with transcript, key-moment frames and a live viewer.",
+  "owner": {
+    "name": "Gaviru Attanayake",
+    "url": "https://github.com/gaviruatt"
+  },
+  "plugins": [
+    {
+      "name": "reelsight",
+      "source": "./",
+      "description": "Claude watches Instagram Reels, TikToks, YouTube Shorts and any short video: transcript, key-moment frames, live viewer.",
+      "version": "1.0.0"
+    }
+  ]
+}
