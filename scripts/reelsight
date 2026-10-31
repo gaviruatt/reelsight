@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# ReelSight entry point. Sets itself up on first run (installs uv if missing;
+# uv then fetches Python, yt-dlp, Whisper and a bundled ffmpeg), then watches.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "reelsight: first run, installing uv (Python runner)…" >&2
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" >&2 ;;
+    *) curl -LsSf https://astral.sh/uv/install.sh | sh >&2 ;;
+  esac
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
+exec uv run --quiet --script "$here/watch.py" "$@"

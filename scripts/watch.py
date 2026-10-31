@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10,<3.14"
-# dependencies = ["yt-dlp>=2025.1.1", "faster-whisper>=1.0", "av<16", "pillow>=10.1"]
+# dependencies = ["yt-dlp>=2025.1.1", "faster-whisper>=1.0", "av<16", "pillow>=10.1", "imageio-ffmpeg>=0.5"]
 # ///
 """ReelSight: watch a short-form video and print a compact digest for Claude.
 
@@ -28,7 +28,21 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 HERE = Path(__file__).resolve().parent
+FF = "ffmpeg"
 HOME = Path(os.environ.get("REELSIGHT_HOME", Path.home() / ".cache" / "reelsight"))
+
+
+def find_ffmpeg() -> str:
+    """System ffmpeg if present, else the static build bundled with imageio-ffmpeg."""
+    if shutil.which("ffmpeg"):
+        return shutil.which("ffmpeg")
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except ImportError:
+        sys.exit("reelsight: ffmpeg not found — run via scripts/reelsight, or install ffmpeg")
+
+
 LOGIN_HINTS = ("login", "log in", "cookies", "rate-limit", "rate limit", "private", "not available")
 
 
@@ -164,7 +178,7 @@ def fetch(src: str, d: Path, st: State, cookies: str | None) -> Path:
     base = ytdlp_cmd() + [
         "--no-playlist", "--newline", "--no-warnings", "-o", str(d / "video.%(ext)s"),
         "-f", "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720][ext=mp4]/bv*[height<=720]+ba/b",
-        "--merge-output-format", "mp4", "--write-info-json",
+        "--merge-output-format", "mp4", "--write-info-json", "--ffmpeg-location", FF,
         "--progress-template", "download:RS %(progress._percent_str)s"]
     if cookies:
         base += ["--cookies-from-browser", cookies]
@@ -208,17 +222,20 @@ def read_meta(d: Path) -> dict:
 
 # ----------------------------------------------------------------- scan -----
 def probe(v: Path) -> dict:
-    j = json.loads(sh(["ffprobe", "-v", "error", "-show_entries",
-                       "format=duration:stream=codec_type,width,height,r_frame_rate", "-of", "json", str(v)]).stdout)
-    vs = next((s for s in j.get("streams", []) if s.get("codec_type") == "video"), {})
-    num, _, den = (vs.get("r_frame_rate") or "0/1").partition("/")
-    return {"duration": float(j.get("format", {}).get("duration") or 0), "width": vs.get("width", 0),
-            "height": vs.get("height", 0), "fps": round(float(num) / float(den or 1)) if float(den or 1) else 0,
-            "has_audio": any(s.get("codec_type") == "audio" for s in j.get("streams", []))}
+    info = sh([FF, "-hide_banner", "-i", str(v)]).stderr  # no ffprobe needed
+    dur = re.search(r"Duration: (\d+):(\d+):([\d.]+)", info)
+    vid = re.search(r"Stream #.*?Video:.*?(\d{2,5})x(\d{2,5})", info)
+    fps = re.search(r"([\d.]+) fps", info)
+    w, h = (int(vid.group(1)), int(vid.group(2))) if vid else (0, 0)
+    if re.search(r"rotation of -?90", info):  # phone footage stored sideways
+        w, h = h, w
+    return {"duration": int(dur.group(1)) * 3600 + int(dur.group(2)) * 60 + float(dur.group(3)) if dur else 0,
+            "width": w, "height": h, "fps": round(float(fps.group(1))) if fps else 0,
+            "has_audio": bool(re.search(r"Stream #.*?Audio:", info))}
 
 
 def scan_cuts(v: Path, thr: float) -> list[tuple[float, float]]:
-    out = sh(["ffmpeg", "-hide_banner", "-nostats", "-i", str(v), "-an", "-vf",
+    out = sh([FF, "-hide_banner", "-nostats", "-i", str(v), "-an", "-vf",
               f"scale=160:-2,select='gt(scene,{thr})',metadata=print:file=-", "-f", "null", "-"]).stdout
     cuts, t = [], None
     for line in out.splitlines():
@@ -231,7 +248,7 @@ def scan_cuts(v: Path, thr: float) -> list[tuple[float, float]]:
 
 def scan_audio(v: Path, win_s=0.25):
     """Loudness curve (dBFS per window) and sudden 'hits' (beat drops, punchlines, bangs)."""
-    raw = sh(["ffmpeg", "-v", "error", "-i", str(v), "-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", "-"],
+    raw = sh([FF, "-v", "error", "-i", str(v), "-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", "-"],
              text=False).stdout
     a = array("h")
     a.frombytes(raw[: len(raw) - len(raw) % 2])
@@ -281,7 +298,7 @@ def choose_frames(dur, cuts, hits, n):
 
 def grab(v: Path, t: float, out: Path, long_edge: int, portrait: bool):
     scale = f"scale=-2:{long_edge}" if portrait else f"scale={long_edge}:-2"
-    sh(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.2f}", "-i", str(v), "-frames:v", "1", "-vf", scale,
+    sh([FF, "-v", "error", "-y", "-ss", f"{t:.2f}", "-i", str(v), "-frames:v", "1", "-vf", scale,
         "-q:v", "4", str(out)])
 
 
@@ -318,7 +335,7 @@ def build_sheet(frames, d: Path, portrait: bool) -> tuple[Path, int]:
     try:
         from PIL import Image, ImageDraw, ImageFont, ImageOps
     except ImportError:  # unlabeled fallback; the digest still maps tiles to times
-        sh(["ffmpeg", "-v", "error", "-y", "-i", str(d / "frames" / "f%02d.jpg"), "-vf",
+        sh([FF, "-v", "error", "-y", "-i", str(d / "frames" / "f%02d.jpg"), "-vf",
             f"scale={tw}:{th}:force_original_aspect_ratio=decrease,pad={tw}:{th}:-1:-1,tile={cols}x{rows}",
             "-frames:v", "1", str(out)])
         return out, cols * tw * rows * th // 750
@@ -451,9 +468,8 @@ def main():
     ap.add_argument("--no-view", action="store_true", help="don't open the live browser viewer")
     a = ap.parse_args()
 
-    for tool in ("ffmpeg", "ffprobe"):
-        if not shutil.which(tool):
-            sys.exit(f"reelsight: {tool} not found — install it (brew install ffmpeg / apt install ffmpeg)")
+    global FF
+    FF = find_ffmpeg()
     d = HOME / job_id(a.src)
     if a.fresh and d.exists():
         shutil.rmtree(d)
