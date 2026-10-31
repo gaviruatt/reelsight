@@ -46,32 +46,36 @@ SHEET: ~/.cache/reelsight/instagram-c0bb676290/sheet.jpg
 
 ## Install
 
-**Requirements:** macOS or Linux, [`ffmpeg`](https://ffmpeg.org), and [`uv`](https://docs.astral.sh/uv/). uv fetches yt-dlp, faster-whisper and Pillow on first run, so there's nothing to pip install.
+Open Claude Code and say:
 
-### Option A: Claude Code plugin
+> **Install the ReelSight skill from https://github.com/gaviruatt/reelsight**
 
-```text
-/plugin marketplace add gaviruatt/reelsight
-/plugin install reelsight@reelsight
-```
+That's it. Claude clones it into `~/.claude/skills/reelsight`, and on first use ReelSight sets itself up: Python, yt-dlp, Whisper and even ffmpeg are fetched automatically via [uv](https://docs.astral.sh/uv/), which is installed for you if you don't have it. Works on macOS and Linux (Windows via Git Bash).
 
-### Option B: clone and link
+<details>
+<summary>Prefer the terminal?</summary>
 
 ```bash
-git clone https://github.com/gaviruatt/reelsight.git && ./reelsight/install.sh
+curl -fsSL https://raw.githubusercontent.com/gaviruatt/reelsight/main/install.sh | bash
 ```
 
-`install.sh` installs ffmpeg and uv if they're missing (via Homebrew where available), links the skill into `~/.claude/skills/reelsight`, and warms up the dependencies.
+or
+
+```bash
+git clone https://github.com/gaviruatt/reelsight.git ~/.claude/skills/reelsight
+```
+
+</details>
 
 ## Use
 
-Just talk to Claude:
+Just paste a link. No command to remember:
 
 > watch this https://www.instagram.com/reel/…
 >
 > what's the hook in this TikTok and why does it work? https://www.tiktok.com/@…/video/…
 >
-> /reelsight:watch ~/Downloads/clip.mp4 summarise the steps
+> summarise the steps in ~/Downloads/clip.mp4
 
 Works with anything [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md) can fetch: Instagram, TikTok, YouTube Shorts, X/Twitter, Facebook, Reddit, Snapchat Spotlight, Twitch clips, Vimeo and more, plus local files.
 
@@ -103,9 +107,9 @@ URL ─► yt-dlp ─► ffprobe ─► scene-cut scan + loudness scan ─► pi
 
 | Piece | File |
 |---|---|
-| Skill instructions (kept short so it costs few tokens) | [`skills/reelsight/SKILL.md`](skills/reelsight/SKILL.md) |
-| Pipeline | [`skills/reelsight/scripts/watch.py`](skills/reelsight/scripts/watch.py) |
-| Live viewer (localhost only, exits after 30 idle minutes) | [`viewer.py`](skills/reelsight/scripts/viewer.py) · [`viewer.html`](skills/reelsight/scripts/viewer.html) |
+| Skill instructions (kept short so it costs few tokens) | [`SKILL.md`](SKILL.md) |
+| Entry point and pipeline | [`scripts/reelsight`](scripts/reelsight) (self-setup) → [`scripts/watch.py`](scripts/watch.py) |
+| Live viewer (localhost only, exits after 30 idle minutes) | [`viewer.py`](scripts/viewer.py) · [`viewer.html`](scripts/viewer.html) |
 
 ## Privacy
 
