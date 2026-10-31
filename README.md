@@ -50,7 +50,7 @@ Open Claude Code and say:
 
 > **Install the ReelSight skill from https://github.com/gaviruatt/reelsight**
 
-That's it. Claude clones it into `~/.claude/skills/reelsight`, and on first use ReelSight sets itself up: Python, yt-dlp, Whisper and even ffmpeg are fetched automatically via [uv](https://docs.astral.sh/uv/), which is installed for you if you don't have it. Works on macOS and Linux (Windows via Git Bash).
+That's it. Claude clones it into `~/.claude/skills/reelsight`, and on first use ReelSight sets itself up: Python, yt-dlp, Whisper and even ffmpeg are fetched automatically via [uv](https://docs.astral.sh/uv/), which is installed for you if you don't have it. Works on macOS and Linux.
 
 <details>
 <summary>Prefer the terminal?</summary>
